@@ -171,7 +171,13 @@ const ext = {
                     ctx.drawImage(img, srcX, srcY, srcWidth, srcHeight, 0, 0, 80, 80);
                     resolve(canvas.toDataURL("image/jpeg"));
                 };
-                img.src = `http://${location.host}/view?filename=${encodeURIComponent(file)}&type=input`;
+				const filename = file.match(/(.*)\/(.*)/) || file // this will either create an array or just return a singular filename 
+				if (Array.isArray(filename)) {
+					img.src = `${location}api/view?filename=${encodeURIComponent(filename[2])}&type=input&subfolder=${encodeURIComponent(filename[1])}`;
+				}
+				else
+					img.src = `${location}api/view?filename=${encodeURIComponent(filename)}&type=input`;
+
             });
         }
 
