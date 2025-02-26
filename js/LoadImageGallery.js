@@ -336,7 +336,8 @@ const ext = {
 				}
 
 				//Gallery
-				if (values.length > 0 && currentNode.type === "LoadImage") {
+				const validLoadImageNodes = ['LoadImage', 'Load Image', "Load image"]
+				if (values.length > 0 && validLoadImageNodes.map((node) => currentNode.type.includes(node)).includes(true)) {
 					if (FirstRun) {
 						CleanDB(values);
 					}
