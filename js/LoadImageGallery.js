@@ -204,16 +204,16 @@ const ext = {
 				const selectedItem = displayedItems[selectedIndex];
 
 				//Tabs
-				const hasBackslash = values.some(value => value.includes('\\'));
+				const hasPathSeparator = values.some(value => value.includes('\/'));
 
-				if (hasBackslash) {
+				if (hasPathSeparator) {
 					const input = ctx.root.querySelector('input');
 
 					// Create a data structure for folders and files
 					const structure = { Root: { files: [] } };
 					items.forEach(entry => {
 						const path = entry.getAttribute('data-value');
-						const parts = path.split('\\');
+						const parts = path.split('\/');
 						let current = structure;
 						if (parts.length === 1) {
 						  structure.Root.files.push(entry);
@@ -262,7 +262,7 @@ const ext = {
 					  if (folder === 'Root') {
 						items.forEach(item => {
 						  const itemPath = item.getAttribute('data-value');
-						  if (!itemPath.includes('\\')) {
+						  if (!itemPath.includes('\/')) {
 							item.style.display = 'block';
 						  }
 						});
@@ -304,7 +304,7 @@ const ext = {
 					createTabs(tabsContainer, structure);
 
 					// Select the active tab
-					const selectedPath = selectedItem.getAttribute('data-value').split('\\');
+					const selectedPath = selectedItem.getAttribute('data-value').split('\/');
 					const selectedFolders = selectedPath.slice(0, -1);
 
 					if (selectedFolders.length === 0) {
