@@ -3,370 +3,395 @@ import { app } from "../../scripts/app.js";
 // Adds a gallery to the Load Image node and tabs for Load Checkpoint/Lora/etc Nodes
 
 const ext = {
-    name: "Comfy.LoadImageGallery",
-    async init() {
-        const ctxMenu = LiteGraph.ContextMenu;
-        const style = document.createElement('style');
-        style.textContent = `
-            .comfy-context-menu-filter {
-                flex-basis: fit-content;
-            }
-            .image-entry {
-                width: 80px;
-                height: 80px;
-                background-size: cover;
-                background-position: center;
-                border-radius: 4px;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                overflow: hidden;
-                font-size: 0!important;
-                position: relative;
-            }
+  name: "Comfy.LoadImageGallery",
+  async init() {
+    const ctxMenu = LiteGraph.ContextMenu;
+    const style = document.createElement("style");
+    style.textContent = `
+      .comfy-context-menu-filter {
+          flex-basis: fit-content;
+      }
+      .image-entry {
+          width: 80px;
+          height: 80px;
+          background-size: cover;
+          background-position: center;
+          border-radius: 4px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          overflow: hidden;
+          font-size: 0!important;
+          position: relative;
+      }
 
-			.tab {
-			  padding: 5px 10px;
-			  margin-right: 5px;
-			  background-color: transparent;
-			  border: none;
-			  cursor: pointer;
-			}
+      .tab {
+        padding: 5px 10px;
+        margin-right: 5px;
+        background-color: transparent;
+        border: none;
+        cursor: pointer;
+      }
 
-			.thumbsContainer {
-			  display: flex;
-			  flex-direction: row;
-			  flex-wrap: wrap;
-			  flex-basis: auto;
-			}
+      .thumbsContainer {
+        display: flex;
+        flex-direction: row;
+        flex-wrap: wrap;
+        flex-basis: auto;
+      }
 
-			.subtabs {
-			  padding-left: 5px;
-			  border-left-style: inset;
-			  border-left-width: 3px;
-			}
+      .subtabs {
+        padding-left: 5px;
+        border-left-style: inset;
+        border-left-width: 3px;
+      }
 
-			.tab:last-child {
-			  margin-right: 0;
-			}
+      .tab:last-child {
+        margin-right: 0;
+      }
 
-			.tab.active {
-			  border-block: 1px dashed aliceblue;
-			}
+      .tab.active {
+        border-block: 1px dashed aliceblue;
+      }
         `;
-        document.head.append(style);
-		let FirstRun = true;
-		function CleanDB(values) {
-			const valuesSet = new Set(values);
-			const transaction = db.transaction(['thumbnails'], 'readwrite');
-			const store = transaction.objectStore('thumbnails');
-			const request = store.getAll();
+    document.head.append(style);
+    let FirstRun = true;
+    function CleanDB(values) {
+      const valuesSet = new Set(values);
+      const transaction = db.transaction(["thumbnails"], "readwrite");
+      const store = transaction.objectStore("thumbnails");
+      const request = store.getAll();
 
-			request.onsuccess = async event => {
-				const thumbnails = event.target.result;
+      request.onsuccess = async (event) => {
+        const thumbnails = event.target.result;
 
-				for (const thumbnail of thumbnails) {
-					if (!valuesSet.has(thumbnail.filename)) {
-						await removeThumbnail(thumbnail.filename);
-						console.log(`Removed stale thumbnail: ${thumbnail.filename}`);
-					}
-				}
-			};
-			request.onerror = event => console.error("Error reading thumbnails from DB: " + event.target.error);
-			FirstRun = false;
-		};
-
-		async function removeThumbnail(filename) {
-			return new Promise((resolve, reject) => {
-				const transaction = db.transaction(['thumbnails'], 'readwrite');
-				const store = transaction.objectStore('thumbnails');
-				const request = store.delete(filename);
-				request.onerror = event => reject("Error removing thumbnail: " + event.target.error);
-				request.onsuccess = event => resolve();
-			});
-		}
-        const dbName = 'ImageThumbnailsDB';
-        const dbVersion = 1;
-        let db;
-
-        const dbPromise = new Promise((resolve, reject) => {
-            const request = indexedDB.open(dbName, dbVersion);
-            request.onerror = event => reject("IndexedDB error: " + event.target.error);
-            request.onsuccess = event => {
-                db = event.target.result;
-                resolve(db);
-            };
-            request.onupgradeneeded = event => {
-                const db = event.target.result;
-                db.createObjectStore('thumbnails', { keyPath: 'filename' });
-            };
-        });
-
-        await dbPromise;
-
-        async function getThumbnail(filename) {
-            return new Promise((resolve, reject) => {
-                const transaction = db.transaction(['thumbnails'], 'readonly');
-                const store = transaction.objectStore('thumbnails');
-                const request = store.get(filename);
-                request.onerror = event => reject("Error fetching thumbnail: " + event.target.error);
-                request.onsuccess = event => resolve(event.target.result ? event.target.result.data : null);
-            });
+        for (const thumbnail of thumbnails) {
+          if (!valuesSet.has(thumbnail.filename)) {
+            await removeThumbnail(thumbnail.filename);
+            console.log(`Removed stale thumbnail: ${thumbnail.filename}`);
+          }
         }
+      };
+      request.onerror = (event) =>
+        console.error(
+          "Error reading thumbnails from DB: " + event.target.error
+        );
+      FirstRun = false;
+    }
 
-        async function saveThumbnail(filename, data) {
-            return new Promise((resolve, reject) => {
-                const transaction = db.transaction(['thumbnails'], 'readwrite');
-                const store = transaction.objectStore('thumbnails');
-                const request = store.put({ filename, data });
-                request.onerror = event => reject("Error saving thumbnail: " + event.target.error);
-                request.onsuccess = event => resolve();
-            });
+    async function removeThumbnail(filename) {
+      return new Promise((resolve, reject) => {
+        const transaction = db.transaction(["thumbnails"], "readwrite");
+        const store = transaction.objectStore("thumbnails");
+        const request = store.delete(filename);
+        request.onerror = (event) =>
+          reject("Error removing thumbnail: " + event.target.error);
+        request.onsuccess = (event) => resolve();
+      });
+    }
+    const dbName = "ImageThumbnailsDB";
+    const dbVersion = 1;
+    let db;
+
+    const dbPromise = new Promise((resolve, reject) => {
+      const request = indexedDB.open(dbName, dbVersion);
+      request.onerror = (event) =>
+        reject("IndexedDB error: " + event.target.error);
+      request.onsuccess = (event) => {
+        db = event.target.result;
+        resolve(db);
+      };
+      request.onupgradeneeded = (event) => {
+        const db = event.target.result;
+        db.createObjectStore("thumbnails", { keyPath: "filename" });
+      };
+    });
+
+    await dbPromise;
+
+    async function getThumbnail(filename) {
+      return new Promise((resolve, reject) => {
+        const transaction = db.transaction(["thumbnails"], "readonly");
+        const store = transaction.objectStore("thumbnails");
+        const request = store.get(filename);
+        request.onerror = (event) =>
+          reject("Error fetching thumbnail: " + event.target.error);
+        request.onsuccess = (event) =>
+          resolve(event.target.result ? event.target.result.data : null);
+      });
+    }
+
+    async function saveThumbnail(filename, data) {
+      return new Promise((resolve, reject) => {
+        const transaction = db.transaction(["thumbnails"], "readwrite");
+        const store = transaction.objectStore("thumbnails");
+        const request = store.put({ filename, data });
+        request.onerror = (event) =>
+          reject("Error saving thumbnail: " + event.target.error);
+        request.onsuccess = (event) => resolve();
+      });
+    }
+
+    function createThumbnail(file) {
+      return new Promise((resolve) => {
+        const img = new Image();
+        img.onload = () => {
+          const canvas = document.createElement("canvas");
+          const ctx = canvas.getContext("2d");
+          canvas.width = 80;
+          canvas.height = 80;
+
+          const aspectRatio = img.width / img.height;
+          let srcWidth, srcHeight, srcX, srcY;
+
+          if (aspectRatio > 1) {
+            srcHeight = img.height;
+            srcWidth = srcHeight;
+            srcX = (img.width - srcWidth) / 2;
+            srcY = 0;
+          } else {
+            srcWidth = img.width;
+            srcHeight = srcWidth;
+            srcX = 0;
+            srcY = (img.height - srcHeight) / 2;
+          }
+
+          ctx.drawImage(img, srcX, srcY, srcWidth, srcHeight, 0, 0, 80, 80);
+          resolve(canvas.toDataURL("image/jpeg"));
+        };
+        const filename = file.match(/(.*)\/(.*)/) || file; // this will either create an array or just return a singular filename
+        if (Array.isArray(filename)) {
+          img.src = `${location}api/view?filename=${encodeURIComponent(
+            filename[2]
+          )}&type=input&subfolder=${encodeURIComponent(filename[1])}`;
+        } else
+          img.src = `${location}api/view?filename=${encodeURIComponent(
+            filename
+          )}&type=input`;
+      });
+    }
+
+    LiteGraph.ContextMenu = function (values, options) {
+      const ctx = ctxMenu.call(this, values, options);
+      if (options?.className === "dark" && values?.length > 0) {
+        const items = Array.from(ctx.root.querySelectorAll(".litemenu-entry"));
+        let displayedItems = [...items];
+
+        function UpdatePosition() {
+          let top = options.event.clientY - 10;
+          const bodyRect = document.body.getBoundingClientRect();
+          const rootRect = ctx.root.getBoundingClientRect();
+          if (bodyRect.height && top > bodyRect.height - rootRect.height - 10) {
+            top = Math.max(0, bodyRect.height - rootRect.height - 10);
+          }
+          ctx.root.style.top = top + "px";
         }
+        requestAnimationFrame(() => {
+          const currentNode = LGraphCanvas.active_canvas.current_node;
+          const clickedComboValue = currentNode.widgets
+            ?.filter(
+              (w) =>
+                w.type === "combo" && w.options.values.length === values.length
+            )
+            .find((w) =>
+              w.options.values.every((v, i) => v === values[i])
+            )?.value;
+          let selectedIndex = clickedComboValue
+            ? values.findIndex((v) => v === clickedComboValue)
+            : 0;
+          if (selectedIndex < 0) {
+            selectedIndex = 0;
+          }
+          const selectedItem = displayedItems[selectedIndex];
 
-        function createThumbnail(file) {
-            return new Promise((resolve) => {
-                const img = new Image();
-                img.onload = () => {
-                    const canvas = document.createElement('canvas');
-                    const ctx = canvas.getContext('2d');
-                    canvas.width = 80;
-                    canvas.height = 80;
-                    
-                    const aspectRatio = img.width / img.height;
-                    let srcWidth, srcHeight, srcX, srcY;
-                    
-                    if (aspectRatio > 1) {
-                        srcHeight = img.height;
-                        srcWidth = srcHeight;
-                        srcX = (img.width - srcWidth) / 2;
-                        srcY = 0;
-                    } else {
-                        srcWidth = img.width;
-                        srcHeight = srcWidth;
-                        srcX = 0;
-                        srcY = (img.height - srcHeight) / 2;
-                    }
-                    
-                    ctx.drawImage(img, srcX, srcY, srcWidth, srcHeight, 0, 0, 80, 80);
-                    resolve(canvas.toDataURL("image/jpeg"));
-                };
-				const filename = file.match(/(.*)\/(.*)/) || file // this will either create an array or just return a singular filename 
-				if (Array.isArray(filename)) {
-					img.src = `${location}api/view?filename=${encodeURIComponent(filename[2])}&type=input&subfolder=${encodeURIComponent(filename[1])}`;
-				}
-				else
-					img.src = `${location}api/view?filename=${encodeURIComponent(filename)}&type=input`;
+          //Tabs
+          const hasPathSeparator = values.some((value) => value.includes("/"));
 
+          if (hasPathSeparator) {
+            const input = ctx.root.querySelector("input");
+
+            // Create a data structure for folders and files
+            const structure = { Root: { files: [] } };
+            items.forEach((entry) => {
+              const path = entry.getAttribute("data-value");
+              const parts = path.split("/");
+              let current = structure;
+              if (parts.length === 1) {
+                structure.Root.files.push(entry);
+              } else {
+                for (let i = 0; i < parts.length - 1; i++) {
+                  const folder = parts[i];
+                  if (!current[folder]) current[folder] = { files: [] };
+                  current = current[folder];
+                }
+                current.files.push(entry);
+              }
             });
-        }
 
-        LiteGraph.ContextMenu = function (values, options) {
-            const ctx = ctxMenu.call(this, values, options);
-            if (options?.className === "dark" && values?.length > 0) {
-                const items = Array.from(ctx.root.querySelectorAll(".litemenu-entry"));
-                let displayedItems = [...items];
-
-				function UpdatePosition() {
-					let top = options.event.clientY - 10;
-					const bodyRect = document.body.getBoundingClientRect();
-					const rootRect = ctx.root.getBoundingClientRect();
-					if (bodyRect.height && top > bodyRect.height - rootRect.height - 10) {
-					top = Math.max(0, bodyRect.height - rootRect.height - 10);
-					}
-					ctx.root.style.top = top + "px";
-				}
-			requestAnimationFrame(() => {			
-				const currentNode = LGraphCanvas.active_canvas.current_node;
-				const clickedComboValue = currentNode.widgets?.filter(
-				(w) => w.type === "combo" && w.options.values.length === values.length
-				).find(
-				(w) => w.options.values.every((v, i) => v === values[i])
-				)?.value;
-				let selectedIndex = clickedComboValue ? values.findIndex((v) => v === clickedComboValue) : 0;
-				if (selectedIndex < 0) {
-				selectedIndex = 0;
-				}
-				const selectedItem = displayedItems[selectedIndex];
-
-				//Tabs
-				const hasPathSeparator = values.some(value => value.includes('\/'));
-
-				if (hasPathSeparator) {
-					const input = ctx.root.querySelector('input');
-
-					// Create a data structure for folders and files
-					const structure = { Root: { files: [] } };
-					items.forEach(entry => {
-						const path = entry.getAttribute('data-value');
-						const parts = path.split('\/');
-						let current = structure;
-						if (parts.length === 1) {
-						  structure.Root.files.push(entry);
-						} else {
-						  for (let i = 0; i < parts.length - 1; i++) {
-							const folder = parts[i];
-							if (!current[folder]) current[folder] = { files: [] };
-							current = current[folder];
-						  }
-						  current.files.push(entry);
-						}
-					});
-
-					// Function for creating tabs
-					function createTabs(container, structure) {
-					Object.keys(structure).forEach(key => {
-					  if (key === 'files') return;
-					  const tab = document.createElement('button');
-					  tab.textContent = key;
-					  tab.className = 'tab';
-					  tab.onclick = () => showGroup(container, key, structure);
-					  if (key === 'Root')
-					  {
-						container.prepend(tab);  
-					  }
-						else{
-							container.appendChild(tab);
-						  }
-					});
-					}
-
-					// Function to display the contents of a folder
-					function showGroup(container, folder, parent) {
-					  // Removing existing subfolder tabs
-					  const subtabs = container.querySelectorAll('.subtabs');
-					  subtabs.forEach(subtab => subtab.remove());
-
-					  const current = parent[folder];
-					  const files = current.files || [];
-					  const subfolders = Object.keys(current).filter(key => key !== 'files');
-					  // Hide all files and folders
-					  items.forEach(entry => entry.style.display = 'none');
-
-					  // Display files in the current folder
-					  if (folder === 'Root') {
-						items.forEach(item => {
-						  const itemPath = item.getAttribute('data-value');
-						  if (!itemPath.includes('\/')) {
-							item.style.display = 'flex';
-						  }
-						});
-					  } else {
-						files.forEach(file => file.style.display = 'flex');
-					  }
-
-					  // Display tabs for nested folders
-					  if (subfolders.length > 0) {
-						const subtabsContainer = document.createElement('div');
-						subtabsContainer.className = 'subtabs';
-						container.appendChild(subtabsContainer);
-						createTabs(subtabsContainer, current);
-
-						// Display the contents of nested folders
-						subfolders.forEach(subfolder => {
-						  const subtab = Array.from(subtabsContainer.querySelectorAll('button')).find(tab => tab.textContent === subfolder);
-						  if (subtab) {
-							subtab.onclick = () => showGroup(subtabsContainer, subfolder, current);
-						  }
-						});
-					  }
-
-					  // Remove old tabs
-					  container.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
-					  const tabs = container.querySelectorAll('button');
-					  tabs.forEach(tab => {
-						if (tab.textContent === folder) {
-						  tab.classList.add('active');
-						}
-					  });
-					}
-
-					// Creating a Container for Tabs
-					const tabsContainer = document.createElement('div');
-					tabsContainer.className = 'tabs';
-					input.insertAdjacentElement('afterend', tabsContainer);
-
-					const thumbsContainer = document.createElement('div'); //seth
-					thumbsContainer.className = 'thumbsContainer'; //seth
-					tabsContainer.insertAdjacentElement('afterend', thumbsContainer); //seth
-
-					createTabs(tabsContainer, structure);
-
-					// Select the active tab
-					const selectedPath = selectedItem.getAttribute('data-value').split('\/');
-					const selectedFolders = selectedPath.slice(0, -1);
-
-					if (selectedFolders.length === 0) {
-					  showGroup(tabsContainer, 'Root', structure);
-					} else {
-					let currentContainer = tabsContainer;
-					let currentParent = structure;
-
-					selectedFolders.forEach((folder, index) => {
-						showGroup(currentContainer, folder, currentParent);
-
-						const subtabs = currentContainer.querySelectorAll('.subtabs');
-						currentContainer = subtabs[subtabs.length - 1];
-						currentParent = currentParent[folder];
-
-						if (index < selectedFolders.length - 1) {
-						  const nextFolder = selectedFolders[index + 1];
-						  const tabs = currentContainer.querySelectorAll('button');
-						  tabs.forEach(tab => {
-							if (tab.textContent === nextFolder) {
-							  tab.classList.add('active');
-							}
-						  });
-						}
-					  });
-					}
-
-					UpdatePosition();
-				}
-
-				//Gallery
-				const validLoadImageNodes = ['LoadImage', 'Load Image', "Load image"]
-				if (values.length > 0 && validLoadImageNodes.map((node) => currentNode.type.includes(node)).includes(true)) {
-					if (FirstRun) {
-						CleanDB(values);
-					}
-					options.scroll_speed = 0.5;
-					ctx.root.style.display = 'flex';
-					ctx.root.style.flexDirection = 'column';
-					ctx.root.style.width = '30%';
-
-					let thumbsContainer = document.querySelector('.thumbsContainer')
-					Array.from(ctx.root.querySelectorAll(".litemenu-entry")).forEach(entry => thumbsContainer.appendChild(entry)); //seth
-					if (displayedItems.length > 30) {
-						UpdatePosition();
-					}
-
-
-					items.forEach(async (entry, index) => {
-						const filename = values[index];
-						entry.classList.add('image-entry');
-						entry.setAttribute('title', filename);
-						
-						let thumbnailUrl = await getThumbnail(filename);
-						if (!thumbnailUrl) {
-							thumbnailUrl = await createThumbnail(filename);
-							await saveThumbnail(filename, thumbnailUrl);
-						}
-
-						entry.style.backgroundImage = `url('${thumbnailUrl}')`;
-						
-					});
-					
-			}			
-				
-				});
+            // Function for creating tabs
+            function createTabs(container, structure) {
+              Object.keys(structure).forEach((key) => {
+                if (key === "files") return;
+                const tab = document.createElement("button");
+                tab.textContent = key;
+                tab.className = "tab";
+                tab.onclick = () => showGroup(container, key, structure);
+                if (key === "Root") {
+                  container.prepend(tab);
+                } else {
+                  container.appendChild(tab);
+                }
+              });
             }
 
-            return ctx;
-        };
+            // Function to display the contents of a folder
+            function showGroup(container, folder, parent) {
+              // Removing existing subfolder tabs
+              const subtabs = container.querySelectorAll(".subtabs");
+              subtabs.forEach((subtab) => subtab.remove());
 
-        LiteGraph.ContextMenu.prototype = ctxMenu.prototype;
-    },
-}
+              const current = parent[folder];
+              const files = current.files || [];
+              const subfolders = Object.keys(current).filter(
+                (key) => key !== "files"
+              );
+              // Hide all files and folders
+              items.forEach((entry) => (entry.style.display = "none"));
+
+              // Display files in the current folder
+              if (folder === "Root") {
+                items.forEach((item) => {
+                  const itemPath = item.getAttribute("data-value");
+                  if (!itemPath.includes("/")) {
+                    item.style.display = "flex";
+                  }
+                });
+              } else {
+                files.forEach((file) => (file.style.display = "flex"));
+              }
+
+              // Display tabs for nested folders
+              if (subfolders.length > 0) {
+                const subtabsContainer = document.createElement("div");
+                subtabsContainer.className = "subtabs";
+                container.appendChild(subtabsContainer);
+                createTabs(subtabsContainer, current);
+
+                // Display the contents of nested folders
+                subfolders.forEach((subfolder) => {
+                  const subtab = Array.from(
+                    subtabsContainer.querySelectorAll("button")
+                  ).find((tab) => tab.textContent === subfolder);
+                  if (subtab) {
+                    subtab.onclick = () =>
+                      showGroup(subtabsContainer, subfolder, current);
+                  }
+                });
+              }
+
+              // Remove old tabs
+              container
+                .querySelectorAll(".tab")
+                .forEach((tab) => tab.classList.remove("active"));
+              const tabs = container.querySelectorAll("button");
+              tabs.forEach((tab) => {
+                if (tab.textContent === folder) {
+                  tab.classList.add("active");
+                }
+              });
+            }
+
+            // Creating a Container for Tabs
+            const tabsContainer = document.createElement("div");
+            tabsContainer.className = "tabs";
+            input.insertAdjacentElement("afterend", tabsContainer);
+
+            const thumbsContainer = document.createElement("div"); //seth
+            thumbsContainer.className = "thumbsContainer"; //seth
+            tabsContainer.insertAdjacentElement("afterend", thumbsContainer); //seth
+
+            createTabs(tabsContainer, structure);
+
+            // Select the active tab
+            const selectedPath = selectedItem
+              .getAttribute("data-value")
+              .split("/");
+            const selectedFolders = selectedPath.slice(0, -1);
+
+            if (selectedFolders.length === 0) {
+              showGroup(tabsContainer, "Root", structure);
+            } else {
+              let currentContainer = tabsContainer;
+              let currentParent = structure;
+
+              selectedFolders.forEach((folder, index) => {
+                showGroup(currentContainer, folder, currentParent);
+
+                const subtabs = currentContainer.querySelectorAll(".subtabs");
+                currentContainer = subtabs[subtabs.length - 1];
+                currentParent = currentParent[folder];
+
+                if (index < selectedFolders.length - 1) {
+                  const nextFolder = selectedFolders[index + 1];
+                  const tabs = currentContainer.querySelectorAll("button");
+                  tabs.forEach((tab) => {
+                    if (tab.textContent === nextFolder) {
+                      tab.classList.add("active");
+                    }
+                  });
+                }
+              });
+            }
+
+            UpdatePosition();
+          }
+
+          //Gallery
+          const validLoadImageNodes = ["LoadImage", "Load Image", "Load image"];
+          if (
+            values.length > 0 &&
+            validLoadImageNodes
+              .map((node) => currentNode.type.includes(node))
+              .includes(true)
+          ) {
+            if (FirstRun) {
+              CleanDB(values);
+            }
+            options.scroll_speed = 0.5;
+            ctx.root.style.display = "flex";
+            ctx.root.style.flexDirection = "column";
+            ctx.root.style.width = "30%";
+
+            let thumbsContainer = document.querySelector(".thumbsContainer");
+            Array.from(ctx.root.querySelectorAll(".litemenu-entry")).forEach(
+              (entry) => thumbsContainer.appendChild(entry)
+            ); //seth
+            if (displayedItems.length > 30) {
+              UpdatePosition();
+            }
+
+            items.forEach(async (entry, index) => {
+              const filename = values[index];
+              entry.classList.add("image-entry");
+              entry.setAttribute("title", filename);
+
+              let thumbnailUrl = await getThumbnail(filename);
+              if (!thumbnailUrl) {
+                thumbnailUrl = await createThumbnail(filename);
+                await saveThumbnail(filename, thumbnailUrl);
+              }
+
+              entry.style.backgroundImage = `url('${thumbnailUrl}')`;
+            });
+          }
+        });
+      }
+
+      return ctx;
+    };
+
+    LiteGraph.ContextMenu.prototype = ctxMenu.prototype;
+  },
+};
 
 app.registerExtension(ext);
