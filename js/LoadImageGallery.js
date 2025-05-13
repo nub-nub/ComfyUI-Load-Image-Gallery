@@ -9,7 +9,7 @@ const ext = {
         const style = document.createElement('style');
         style.textContent = `
             .comfy-context-menu-filter {
-                grid-area: 1 / 1 / 2 / 5;
+                flex-basis: fit-content;
             }
             .image-entry {
                 width: 80px;
@@ -33,12 +33,25 @@ const ext = {
 			  cursor: pointer;
 			}
 
+			.thumbsContainer {
+			  display: flex;
+			  flex-direction: row;
+			  flex-wrap: wrap;
+			  flex-basis: auto;
+			}
+
+			.subtabs {
+			  padding-left: 5px;
+			  border-left-style: inset;
+			  border-left-width: 3px;
+			}
+
 			.tab:last-child {
 			  margin-right: 0;
 			}
 
 			.tab.active {
-			  border-bottom: 3px solid #64b5f6;
+			  border-block: 1px dashed aliceblue;
 			}
         `;
         document.head.append(style);
@@ -227,7 +240,6 @@ const ext = {
 					  const current = parent[folder];
 					  const files = current.files || [];
 					  const subfolders = Object.keys(current).filter(key => key !== 'files');
-
 					  // Hide all files and folders
 					  items.forEach(entry => entry.style.display = 'none');
 
@@ -236,11 +248,11 @@ const ext = {
 						items.forEach(item => {
 						  const itemPath = item.getAttribute('data-value');
 						  if (!itemPath.includes('\/')) {
-							item.style.display = 'block';
+							item.style.display = 'flex';
 						  }
 						});
 					  } else {
-						files.forEach(file => file.style.display = 'block');
+						files.forEach(file => file.style.display = 'flex');
 					  }
 
 					  // Display tabs for nested folders
@@ -273,6 +285,10 @@ const ext = {
 					const tabsContainer = document.createElement('div');
 					tabsContainer.className = 'tabs';
 					input.insertAdjacentElement('afterend', tabsContainer);
+
+					const thumbsContainer = document.createElement('div'); //seth
+					thumbsContainer.className = 'thumbsContainer'; //seth
+					tabsContainer.insertAdjacentElement('afterend', thumbsContainer); //seth
 
 					createTabs(tabsContainer, structure);
 
@@ -315,11 +331,16 @@ const ext = {
 						CleanDB(values);
 					}
 					options.scroll_speed = 0.5;
-					ctx.root.style.display = 'grid';
-					ctx.root.style.gridTemplateColumns = 'repeat(4, 88px)';
+					ctx.root.style.display = 'flex';
+					ctx.root.style.flexDirection = 'column';
+					ctx.root.style.width = '30%';
+
+					let thumbsContainer = document.querySelector('.thumbsContainer')
+					Array.from(ctx.root.querySelectorAll(".litemenu-entry")).forEach(entry => thumbsContainer.appendChild(entry)); //seth
 					if (displayedItems.length > 30) {
 						UpdatePosition();
 					}
+
 
 					items.forEach(async (entry, index) => {
 						const filename = values[index];
